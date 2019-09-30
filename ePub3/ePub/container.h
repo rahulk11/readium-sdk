@@ -30,7 +30,9 @@
 #include <ePub3/xml/node.h>
 #include <vector>
 #include <ePub3/utilities/future.h>
+#include <vector>
 
+using namespace std;
 ///////////////////////////////////////////////////////////////////////////////////
 // Bit of a hack -- make the WinRT Container class available so we can befriend it.
 
@@ -96,7 +98,13 @@ public:
      */
     EPUB3_EXPORT    Container();
     
-    ///
+    // bool isWritingNeeded();
+    //adds a file within zip as "zipFilePath" from local-path cacheFilePath
+    // void addReqFile(vector<std::string> & pathVec);
+    /// Returns the BookData
+    // void       getBookData(vector<std::string> &data, std::string &instID);
+    /// Opens the folder at a given path.
+    bool            openFolder(const string& path, bool skipLoadingPotentiallyEncryptedContent = false);
     /// Opens the archive at a given path.
     bool            Open(const string& path, bool skipLoadingPotentiallyEncryptedContent = false);
     
@@ -104,6 +112,8 @@ public:
     /// Creates and returns a new Container instance by calling OpenContainerAsync() and blocking.
     static ContainerPtr
         OpenContainer(const string& path);
+    static ContainerPtr
+        OpenContainer1(const string& path, const bool &instID);
 
 #ifdef SUPPORT_ASYNC
     ///

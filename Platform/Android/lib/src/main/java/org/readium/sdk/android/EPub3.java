@@ -21,12 +21,23 @@
 
 package org.readium.sdk.android;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.readium.sdk.android.launcher.ContainerList;
+import org.readium.sdk.android.util.BookData;
+import org.readium.sdk.android.util.ContentsData;
+import org.readium.sdk.android.util.MetaData;
 
 
 /**
@@ -36,155 +47,174 @@ import android.util.Log;
  */
 public class EPub3 {
 
-	/*
-	 * Static Native library loader
-	 */
-	static {
-		// Load the ePub3 Native lib
-		System.loadLibrary("epub3");
-	}
-	
-	
-	/*
-	 * Constants
-	 */
+    /*
+     * Static Native library loader
+     */
+    static {
+        // Load the ePub3 Native lib
+        try {
+            System.loadLibrary("epub3");
+        } catch (UnsatisfiedLinkError e) {
+            //nothing to do
+            System.out.println("Couldn't load EPUB3");
+            System.out.println(e.getMessage());
+        }
+    }
 
-	//TODO: Is this needed at all?
-	private static final int BUFFER_SIZE_INCREMENT = 2*1024*1024;
-	private static final String TAG = "EPub3";
 
-	
-	/**
-	 * Private constructor to prevent creating objects
-	 * from this class.
-	 */
-	private EPub3() {}
-	
-	/*
-	 * Methods to be used from native code
-	 */
-	
-	/**
-	 * Helper method to create a new String List.
-	 * @return The newly created String List.
-	 */
-	private static List<String> createStringList() {
-		return new ArrayList<String>();
-	}
-	
-	/**
-	 * Helper method to add a string to a String List.
-	 * @param list The String List to add to.
-	 * @param str The String to be added.
-	 */
-	private static void addStringToList(List<String> list, String str) {
-		list.add(str);
-	}
-	
-	/**
-	 * Helper method to create a Buffer.
-	 * @param bufferSize The desired Buffer size.
-	 * @return The newly created Buffer.
-	 */
-	private static ByteBuffer createBuffer(int bufferSize) {
-		ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-		buffer.position(0);
-		buffer.limit(0);
+    /*
+     * Constants
+     */
+
+    //TODO: Is this needed at all?
+    private static final int BUFFER_SIZE_INCREMENT = 2 * 1024 * 1024;
+    private static final String TAG = "EPub3";
+    private static BookData bookData;
+    public static boolean isDirectory;
+
+    /**
+     * Private constructor to prevent creating objects
+     * from this class.
+     */
+    private EPub3() {
+    }
+
+    /*
+     * Methods to be used from native code
+     */
+
+    /**
+     * Helper method to create a new String List.
+     *
+     * @return The newly created String List.
+     */
+    private static List<String> createStringList() {
+        return new ArrayList<String>();
+    }
+
+    /**
+     * Helper method to add a string to a String List.
+     *
+     * @param list The String List to add to.
+     * @param str  The String to be added.
+     */
+    private static void addStringToList(List<String> list, String str) {
+        list.add(str);
+    }
+
+    /**
+     * Helper method to create a Buffer.
+     *
+     * @param bufferSize The desired Buffer size.
+     * @return The newly created Buffer.
+     */
+    private static ByteBuffer createBuffer(int bufferSize) {
+        ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
+        buffer.position(0);
+        buffer.limit(0);
 //		Log.d(TAG, "createBuffer: "+bufferSize);
-		return buffer;
-	}
-	
-	/**
-	 * Helper method to append bytes to a Buffer.
-	 * @param buffer The Buffer to append bytes to.
-	 * @param data The data bytes to be appended.
-	 */
-	private static void appendBytesToBuffer(ByteBuffer buffer, byte[] data) {
-		int newLimit = buffer.limit() + data.length;
+        return buffer;
+    }
+
+    /**
+     * Helper method to append bytes to a Buffer.
+     *
+     * @param buffer The Buffer to append bytes to.
+     * @param data   The data bytes to be appended.
+     */
+    private static void appendBytesToBuffer(ByteBuffer buffer, byte[] data) {
+        int newLimit = buffer.limit() + data.length;
 //		Log.d(TAG, "appendBytesToBuffer: "+newLimit);
-		buffer.limit(newLimit);
-		buffer.put(data);
-	}
-	
-	
-	/*
-	 * Static native JNI exported methods
-	 */
-	
-	/**
-	 * Sets the core ePub3 SDK cache path, where it can
-	 * store temporary files. This needs to be called before
-	 * any ePub3 library calls.
-	 * @param cachePath The cache path obtained from the
-	 * application context.
-	 */
+        buffer.limit(newLimit);
+        buffer.put(data);
+    }
+
+    /*
+     * Static native JNI exported methods
+     */
+
+    /**
+     * Sets the core ePub3 SDK cache path, where it can
+     * store temporary files. This needs to be called before
+     * any ePub3 library calls.
+     *
+     * @param cachePath The cache path obtained from the
+     *                  application context.
+     */
 //#if ENABLE_ZIP_ARCHIVE_WRITER
-//	public static native void setCachePath(String cachePath);
-	
-	/**
-	 * Sets a handler that will be called after the filter chain
-	 * has been populated. This allows the application to
-	 * register any additional filters from within the handler.
-	 * This needs to be called before any ePub3 library calls.
-	 * @param handler The handler that will be called
-	 */
-	public static native void setContentFiltersRegistrationHandler(Runnable handler);
+    public static native void setCachePath(String cachePath);
 
-	/**
-	 * Initialize readium sdk
-	 */
-	public static native void initialize();
+    /**
+     * Sets a handler that will be called after the filter chain
+     * has been populated. This allows the application to
+     * register any additional filters from within the handler.
+     * This needs to be called before any ePub3 library calls.
+     *
+     * @param handler The handler that will be called
+     */
+    public static native void setContentFiltersRegistrationHandler(Runnable handler);
 
-	/**
-	 * Checks if the supplied book is EPUB3.
-	 * @param path Path to the book.
-	 * @return True if the book is EPUB3.
-	 */
+    /**
+     * Initialize readium sdk
+     */
+    public static native void initialize();
+
+    /**
+     * Checks if the supplied book is EPUB3.
+     * @param path Path to the book.
+     * @return True if the book is EPUB3.
+     */
 //	public static native boolean isEpub3Book(final String path);
 
-	/**
-	 * Open an ePub3 book.
-	 * @param path Path to the ePub3 book.
-	 * @return A Container object corresponding to the opened
-	 * ePub3 book.
-	 */
-	public static native Container openBook(final String path);
+    /**
+     * Open an ePub3 book.
+     *
+     * @param path Path to the ePub3 book.
+     * @return A Container object corresponding to the opened
+     * ePub3 book.
+     */
+    public static native Container openBook(final String path);
 
-	public static native Container openBookPlain(final String path);
+    public static native Container openBookPlain(final String path);
 
 
-	/**
-	 * Releases a native pointer from the PointerPool.
-	 * @param nativePtr The native pointer.
-	 */
-	public static native void releaseNativePointer(final long nativePtr);
-	
-	/*
-	 * Helper java methods for handling native calls
-	 */
-	
-	/**
-	 * Close an ePub3 book.
-	 * @param container The Container object corresponding to
-	 * the ePub3 book to close.
-	 */
-	public static void closeBook(final Container container) {
-		container.close();
-	}
+    /**
+     * Releases a native pointer from the PointerPool.
+     *
+     * @param nativePtr The native pointer.
+     */
+    public static native void releaseNativePointer(final long nativePtr);
 
-	public static SdkErrorHandler m_SdkErrorHandler = null;
-	public static void setSdkErrorHandler(SdkErrorHandler sdkErrorHandler) {
-		m_SdkErrorHandler = sdkErrorHandler;
-	}
+    /*
+     * Helper java methods for handling native calls
+     */
 
-	private static boolean handleSdkError(String message, boolean isSevereEpubError) {
-		if (m_SdkErrorHandler != null) {
-			return m_SdkErrorHandler.handleSdkError(message, isSevereEpubError);
-		}
-			
-		System.out.println("!SdkErrorHandler: " + message + " (" + (isSevereEpubError ? "warning" : "info") + ")");
+    /**
+     * Close an ePub3 book.
+     *
+     * @param container The Container object corresponding to
+     *                  the ePub3 book to close.
+     */
+    public static void closeBook(final Container container) {
+        container.close();
+    }
 
-		// never throws an exception
-		return true;
-	}
+    public static SdkErrorHandler m_SdkErrorHandler = null;
+
+    public static void setSdkErrorHandler(SdkErrorHandler sdkErrorHandler) {
+        m_SdkErrorHandler = sdkErrorHandler;
+    }
+
+    private static boolean handleSdkError(String message, boolean isSevereEpubError) {
+        if (m_SdkErrorHandler != null) {
+            return m_SdkErrorHandler.handleSdkError(message, isSevereEpubError);
+        }
+
+        System.out.println("!SdkErrorHandler: " + message + " (" + (isSevereEpubError ? "warning" : "info") + ")");
+
+        // never throws an exception
+        return true;
+    }
+
+    static int navPoint = 0;
 }

@@ -25,6 +25,8 @@
 #include <libzip/zip.h>
 #include <list>
 
+#define ENABLE_ZIP_ARCHIVE_WRITER true
+
 EPUB3_BEGIN_NAMESPACE
 
 /**

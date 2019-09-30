@@ -22,10 +22,65 @@
 #include <ePub3/xml/document.h>
 #include <ePub3/utilities/error_handler.h>
 #include <sstream>
+#include <cstdio>
+#include <android/log.h>
+#define  LOG_TAG    "ArchiveXml"
+
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 EPUB3_BEGIN_NAMESPACE
 
 const int ArchiveXmlReader::DEFAULT_OPTIONS = XML_PARSE_RECOVER | XML_PARSE_DTDATTR | XML_PARSE_NONET;
+
+std::shared_ptr<ePub3::xml::Document> ArchiveXmlReader::readXmlFile(const ePub3::string& path, bool log)
+{
+    LOGD("%s ", path.c_str());
+    FILE *fp;
+    fp = fopen(path.c_str(),"r");
+    if(fp!=nullptr){
+        fseek(fp, 0, SEEK_END);
+        long len = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        if(len<=0){
+            return nullptr;
+        }
+        uint8_t *docBuf = (uint8_t*)malloc(len);
+        if (!bool(docBuf))
+            return nullptr;
+        ssize_t resbuflen = fread(docBuf, 1, len, fp);
+        if (resbuflen <= 0)
+        {
+            free(docBuf);
+            return nullptr;
+        }
+        const char * encoding = "utf-8";
+        
+        if(log){
+            std::string fileContents ((char*)docBuf, resbuflen);
+            throw std::invalid_argument(std::string(__PRETTY_FUNCTION__) + ": " + fileContents);
+        }
+        xmlDocPtr raw = xmlReadMemory((const char*)docBuf, resbuflen, path.c_str(), encoding, ArchiveXmlReader::DEFAULT_OPTIONS);
+
+
+        if (!bool(raw) || (raw->type != XML_HTML_DOCUMENT_NODE && raw->type != XML_DOCUMENT_NODE) || !bool(raw->children)) {
+            if (bool(raw)) {
+                xmlFreeDoc(raw);
+            }
+            return nullptr;
+        }
+        std::shared_ptr<ePub3::xml::Document> doc = xml::Wrapped<ePub3::xml::Document>(raw);
+        return doc;
+    } else {
+        LOGD("%s ", "could not open file");
+    }
+
+    
+
+    return nullptr;
+}
 
 #if ENABLE_XML_READ_DOC_MEMORY
 
@@ -85,11 +140,14 @@ std::shared_ptr<xml::Document> ArchiveXmlReader::xmlReadDocument(const char * ur
 //}
 
 #endif //ENABLE_XML_READ_DOC_MEMORY
-
+ArchiveXmlReader::ArchiveXmlReader()
+{
+    
+}
 ArchiveXmlReader::ArchiveXmlReader(ArchiveReader * r) : _reader(r)
 {
-    if ( _reader == nullptr )
-        throw std::invalid_argument(std::string(__PRETTY_FUNCTION__) + ": Nil ArchiveReader supplied");
+    // if ( _reader == nullptr )
+    //     throw std::invalid_argument(std::string(__PRETTY_FUNCTION__) + ": Nil ArchiveReader supplied");
 }
 ArchiveXmlReader::ArchiveXmlReader(unique_ptr<ArchiveReader>&& r) : _reader(std::move(r))
 {

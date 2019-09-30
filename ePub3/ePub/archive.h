@@ -32,6 +32,8 @@
 
 #include <ePub3/utilities/utfstring.h>
 
+#define ENABLE_ZIP_ARCHIVE_WRITER true
+
 #if EPUB_OS(WINDOWS)
 typedef unsigned short mode_t;
 #endif

@@ -280,6 +280,8 @@ public:
 
     EPUB3_EXPORT
     string                      AbsolutePath()                      const;
+    EPUB3_EXPORT
+    string                      FullPathIfDir()                      const;
     
     const string&               Identifier()                        const   { return XMLIdentifier(); }
     const string&               Href()                              const   { return _href; }

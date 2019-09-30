@@ -21,15 +21,20 @@
 
 #include <jni.h>
 
-
 #ifndef _PACKAGE_JNI_H_
 #define _PACKAGE_JNI_H_
 
+//int GetFileSize()
+//{
+    //struct stat stat_buf;
+    //int rc = stat(filename.c_str(), &stat_buf);
+    //return rc == 0 ? stat_buf.st_size : -1;
+    //return 0;
+//}
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 /*
  * Exported functions
@@ -189,6 +194,9 @@ JNIEXPORT jobject JNICALL Java_org_readium_sdk_android_Package_nativeGetManifest
  */
 JNIEXPORT jint JNICALL Java_org_readium_sdk_android_Package_nativeGetArchiveInfoSize
 		(JNIEnv* env, jobject thiz, jlong pckgPtr, jlong contnrPtr, jstring jrelativePath);
+
+JNIEXPORT jint JNICALL Java_org_readium_sdk_android_Package_nativeGetDirInfoSize
+        (JNIEnv* env, jobject thiz, jlong pckgPtr, jlong contnrPtr, jstring jrelativePath);
 /*
  * Class:     org_readium_sdk_android_Package
  * Method:    nativeInputStreamForRelativePath
@@ -196,6 +204,10 @@ JNIEXPORT jint JNICALL Java_org_readium_sdk_android_Package_nativeGetArchiveInfo
  */
 JNIEXPORT jobject JNICALL Java_org_readium_sdk_android_Package_nativeInputStreamForRelativePath
 		(JNIEnv* env, jobject thiz, jlong pckgPtr, jlong contnrPtr, jstring jrelativePath, jint bufferSize, jboolean isRange);
+
+JNIEXPORT jobject JNICALL Java_org_readium_sdk_android_Package_nativeInputStreamForDirRelativePath
+		(JNIEnv* env, jobject thiz, jlong pckgPtr, jlong contnrPtr, jstring jrelativePath, jint bufferSize, jboolean isRange);
+
 /*
  * Class:     org_readium_sdk_android_Package
  * Method:    nativeRawInputStreamForRelativePath

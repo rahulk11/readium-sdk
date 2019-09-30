@@ -25,7 +25,13 @@
 #include "ePub3/xml/document.h"
 #include REGEX_INCLUDE
 #include <sstream>
+#include <android/log.h>
+#define  LOG_TAG    "Manifest"
 
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 EPUB3_BEGIN_NAMESPACE
 
 #if EPUB_COMPILER_SUPPORTS(CXX_INITIALIZER_LISTS)
@@ -185,6 +191,12 @@ string ManifestItem::AbsolutePath() const
 {
     return _Str(GetPackage()->BasePath(), BaseHref());
 }
+
+string ManifestItem::FullPathIfDir() const
+{
+    return _Str(GetPackage()->DirPath(), "/", GetPackage()->BasePath(), BaseHref());
+}
+
 shared_ptr<ManifestItem> ManifestItem::MediaOverlay() const
 {
     auto package = this->Owner();
@@ -238,7 +250,7 @@ bool ManifestItem::CanLoadDocument() const
 shared_ptr<xml::Document> ManifestItem::ReferencedDocument() const
 {
     // TODO: handle remote URLs
-    string path(BaseHref());
+    string path(FullPathIfDir());
     
     auto package = this->Owner();
     if ( !package )
@@ -251,45 +263,65 @@ shared_ptr<xml::Document> ManifestItem::ReferencedDocument() const
     // the content filter chain when unpacking the Package. For
     // example, with some DRM algorithms, the navigation tables are
     // encrypted and should be filtered before being parsed.
-    ePub3::ManifestItemPtr manifestRef = std::const_pointer_cast<ManifestItem>(Ptr());
-    if (!manifestRef)
-        return nullptr;
+ //    ePub3::ManifestItemPtr manifestRef = std::const_pointer_cast<ManifestItem>(Ptr());
+ //    if (!manifestRef)
+ //        return nullptr;
 	
-    shared_ptr<ByteStream> byteStream = package->GetFilterChainByteStream(manifestRef);
-    if (!byteStream)
-        return nullptr;
+ //    shared_ptr<ByteStream> byteStream = package->GetFilterChainByteStream(manifestRef);
+ //    if (!byteStream)
+ //        return nullptr;
 	
-	void *docBuf = nullptr;
-	std::size_t resbuflen = byteStream->ReadAllBytes(&docBuf);
-	
-    // In some EPUBs, UTF-8 XML/HTML files have a superfluous (erroneous?) BOM, so we either:
-    // pass "utf-8" and expect InputBuffer::read_cb (in io.cpp) to skip the 3 erroneous bytes
-    // (otherwise the XML parser fails),
-    // or we pass NULL (in which case the parser auto-detects encoding)
-    const char * encoding = nullptr;
-    //const char * encoding = "utf-8";
+	// void *docBuf = nullptr;
+	// std::size_t resbuflen = byteStream->ReadAllBytes(&docBuf);
 
-//    std::string fileContents ((char*)docBuf, resbuflen);
-
-	xmlDocPtr raw;
-    if ( _mediaType == "text/html" ) {
-        raw = htmlReadMemory((const char*)docBuf, resbuflen, path.c_str(), encoding, ArchiveXmlReader::DEFAULT_OPTIONS);
-    } else {
-        raw = xmlReadMemory((const char*)docBuf, resbuflen, path.c_str(), encoding, ArchiveXmlReader::DEFAULT_OPTIONS);
-    }
-
-    if (docBuf)
-        free(docBuf);
-
-    if (!bool(raw) || (raw->type != XML_HTML_DOCUMENT_NODE && raw->type != XML_DOCUMENT_NODE) || !bool(raw->children)) {
-        if (bool(raw)) {
-            xmlFreeDoc(raw);
+    FILE *fp;
+    fp = fopen(path.c_str(),"r");
+    if(fp!=nullptr){
+        fseek(fp, 0, SEEK_END);
+        long len = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        if(len<=0){
+            return nullptr;
         }
-        return nullptr;
+        
+        uint8_t *docBuf = (uint8_t*)malloc(len);
+        if (!bool(docBuf))
+            return nullptr;
+        ssize_t resbuflen = fread(docBuf, 1, len, fp);
+        if (resbuflen <= 0)
+        {
+            free(docBuf);
+            return nullptr;
+        }
+        
+        // In some EPUBs, UTF-8 XML/HTML files have a superfluous (erroneous?) BOM, so we either:
+        // pass "utf-8" and expect InputBuffer::read_cb (in io.cpp) to skip the 3 erroneous bytes
+        // (otherwise the XML parser fails),
+        // or we pass NULL (in which case the parser auto-detects encoding)
+        const char * encoding = nullptr;
+        //const char * encoding = "utf-8";
+
+        xmlDocPtr raw;
+        if ( _mediaType == "text/html" ) {
+            raw = htmlReadMemory((const char*)docBuf, resbuflen, path.c_str(), encoding, ArchiveXmlReader::DEFAULT_OPTIONS);
+        } else {
+            raw = xmlReadMemory((const char*)docBuf, resbuflen, path.c_str(), encoding, ArchiveXmlReader::DEFAULT_OPTIONS);
+        }
+
+        if (docBuf)
+            free(docBuf);
+
+        if (!bool(raw) || (raw->type != XML_HTML_DOCUMENT_NODE && raw->type != XML_DOCUMENT_NODE) || !bool(raw->children)) {
+            if (bool(raw)) {
+                xmlFreeDoc(raw);
+            }
+            return nullptr;
+        }
+
+        result = xml::Wrapped<xml::Document>(raw);
+    } else {
+        LOGD("%s %s", "could not open file ", path.c_str());
     }
-
-    result = xml::Wrapped<xml::Document>(raw);
-
 
 #elif EPUB_USE(WIN_XML)
 	// TODO: filtering referenced document through Content Filters

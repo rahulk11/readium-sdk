@@ -24,6 +24,13 @@
 #include <libzip/zip.h>
 #include <libzip/zipint.h>          // for internals of zip_file
 #include <sys/stat.h>
+#include <android/log.h>
+#define  LOG_TAG    "ByteStream"
+
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #if EPUB_OS(ANDROID) || EPUB_OS(LINUX) || EPUB_OS(WINDOWS)
 # include <condition_variable>
 #endif

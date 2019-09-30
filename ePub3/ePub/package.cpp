@@ -41,6 +41,13 @@
 //#include "iri.h"
 #include <google-url/url_canon.h>
 #include <google-url/url_util.h>
+#include <android/log.h>
+#define  LOG_TAG    "Package"
+
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 EPUB3_BEGIN_NAMESPACE
 
@@ -87,11 +94,12 @@ bool Package::gValidateSchema = true;
 
 PackageBase::PackageBase(const shared_ptr<Container>& owner, const string& type) : _archive(owner->GetArchive()), _opf(nullptr), _type(type)
 {
-    if ( !_archive )
-        throw std::invalid_argument("Owner doesn't have an archive!");
+    _path = owner->Path();
 }
 PackageBase::PackageBase(PackageBase&& o) : _archive(o._archive), _opf(std::move(o._opf)), _pathBase(std::move(o._pathBase)), _type(std::move(o._type)), _manifestByID(std::move(o._manifestByID)), _manifestByAbsolutePath(std::move(o._manifestByAbsolutePath)), _spine(std::move(o._spine))
 {
+    if ( !_archive )
+        throw std::invalid_argument("Owner doesn't have an archive!");
     o._archive = nullptr;
 }
 PackageBase::~PackageBase()
@@ -101,21 +109,37 @@ PackageBase::~PackageBase()
 
 bool PackageBase::Open(const string& path, bool skipLoadingPotentiallyEncryptedContent)
 {
-    ArchiveXmlReader reader(_archive->ReaderAtPath(path.stl_str()));
-#if ENABLE_XML_READ_DOC_MEMORY
+    if(isFolder()){
+        ArchiveXmlReader reader(std::move(nullptr));
+        #if ENABLE_XML_READ_DOC_MEMORY
+            _opf = reader.readXmlFile(ePub3::string((_path+"/"+path).c_str()), false);
 
-        _opf = reader.readXml(path);
+        #else
 
-#else
+            #if EPUB_USE(LIBXML2)
+            
+                _opf = reader.readXmlFile(ePub3::string((_path+"/"+path).c_str()), false);
+            #elif EPUB_USE(WIN_XML)
+                _opf = reader.ReadDocument(path.c_str(), nullptr, 0);
+            #endif
 
-#if EPUB_USE(LIBXML2)
-    _opf = reader.xmlReadDocument(path.c_str(), nullptr);
-#elif EPUB_USE(WIN_XML)
-    _opf = reader.ReadDocument(path.c_str(), nullptr, 0);
-#endif
+        #endif //ENABLE_XML_READ_DOC_MEMORY
+    }
+    else {
+        ArchiveXmlReader reader(_archive->ReaderAtPath(path.stl_str()));
+        #if ENABLE_XML_READ_DOC_MEMORY
+            
+            _opf = reader.readXml(path);
 
-#endif //ENABLE_XML_READ_DOC_MEMORY
+        #else
+            #if EPUB_USE(LIBXML2)
+                _opf = reader.xmlReadDocument(path.c_str(), nullptr);
+            #elif EPUB_USE(WIN_XML)
+                _opf = reader.ReadDocument(path.c_str(), nullptr, 0);
+            #endif
 
+        #endif //ENABLE_XML_READ_DOC_MEMORY
+    }
 
     if ( !bool(_opf) )
     {
@@ -132,7 +156,6 @@ bool PackageBase::Open(const string& path, bool skipLoadingPotentiallyEncryptedC
     {
         _pathBase = path.substr(0, loc+1);
     }
-    
     return true;
 }
 shared_ptr<SpineItem> PackageBase::SpineItemAt(size_t idx) const
@@ -257,7 +280,7 @@ shared_ptr<Collection> PackageBase::CollectionWithRole(string_view role) const
     return found->second;
 }
 unique_ptr<ByteStream> PackageBase::ReadStreamForItemAtPath(const string &path) const
-{
+{    
     return _archive->ByteStreamAtPath(path.stl_str());
 }
 shared_ptr<SpineItem> PackageBase::ConfirmOrCorrectSpineItemQualifier(shared_ptr<SpineItem> pItem, CFI::Component *pComponent) const
@@ -296,7 +319,6 @@ NavigationList PackageBase::NavTablesFromManifestItem(shared_ptr<PackageBase> ow
     
     if ( pItem == nullptr )
         return NavigationList();
-    
     auto doc = pItem->ReferencedDocument();
     if ( !bool(doc) )
         return NavigationList();
@@ -415,7 +437,6 @@ bool Package::Open(const string& path, bool skipLoadingPotentiallyEncryptedConte
 		auto fm = FilterManager::Instance();
 		auto fc = fm->BuildFilterChainForPackage(shared_from_this());
 		SetFilterChain(fc);
-		
 		status = Unpack(skipLoadingPotentiallyEncryptedContent);
 	}
 
@@ -494,7 +515,6 @@ void Package::Unpack_Finally(bool resetContentFilterChain)
     }
 
     this->LoadNavigationTables();
-
     // go through the TOC and copy titles to the relevant spine items for easy access
     this->CompileSpineItemTitles();
 
@@ -557,7 +577,6 @@ void Package::LoadNavigationTables()
         {
             if ( !item.second->HasProperty(ItemProperties::Navigation) )
                 continue;
-
             NavigationList tables = NavTablesFromManifestItem(sharedMe, item.second);
             for ( auto& table : tables )
             {
@@ -635,6 +654,7 @@ void Package::LoadNavigationTables()
 bool Package::Unpack(bool skipLoadingPotentiallyEncryptedContent)
 {
     PackagePtr sharedMe = shared_from_this();
+    
     
     // very basic sanity check
     auto root = _opf->Root();
@@ -714,7 +734,6 @@ bool Package::Unpack(bool skipLoadingPotentiallyEncryptedContent)
     __m["dc"] = DCNamespace;
     XPathWrangler xpath(_opf, __m);
 #endif
-    
     // simple things: manifest and spine items
     xml::NodeSet manifestNodes;
     xml::NodeSet spineNodes;

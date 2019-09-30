@@ -26,6 +26,8 @@
 #include <ePub3/archive.h>
 #include <ePub3/xml/io.h>
 
+#define ENABLE_ZIP_ARCHIVE_WRITER true
+
 EPUB3_BEGIN_NAMESPACE
 
 /**
@@ -47,7 +49,7 @@ public:
 	 *   XML_PARSE_NONET:   Forbid network access (ie. when loading DTD)
 	 */
     static const int DEFAULT_OPTIONS;
-    
+    EPUB3_EXPORT ArchiveXmlReader();
     EPUB3_EXPORT ArchiveXmlReader(ArchiveReader * r);
     EPUB3_EXPORT ArchiveXmlReader(unique_ptr<ArchiveReader>&& r);
     EPUB3_EXPORT ArchiveXmlReader(ArchiveXmlReader&& o);
@@ -60,7 +62,7 @@ public:
 	virtual size_t offset() const { return _reader->position(); }
     
     bool operator !() const { return !bool(_reader); }
-
+std::shared_ptr<ePub3::xml::Document> readXmlFile(const ePub3::string& path, bool log);
 #if ENABLE_XML_READ_DOC_MEMORY
 
 //#error "ENABLE_XML_READ_DOC_MEMORY = 1"

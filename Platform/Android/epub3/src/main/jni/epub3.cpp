@@ -37,10 +37,9 @@
 #include "iri.h"
 #include "resource_stream.h"
 #include "content_module_exception.h"
-
+#include <vector>
 
 using namespace std;
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +69,7 @@ static const char *javaEPub3_appendBytesToBufferSignature = "(Ljava/nio/ByteBuff
 
 static const char *javaEPub3_handleSdkErrorMethodName = "handleSdkError";
 static const char *javaEPub3_handleSdkErrorSignature = "(Ljava/lang/String;Z)Z";
+
 
 
 /*
@@ -214,6 +214,7 @@ static int onLoad_cacheJavaElements_epub3(JNIEnv *env) {
             javaEPub3_addStringToListMethodName, javaEPub3_addStringToListSignature, ONLOAD_ERROR);
     INIT_STATIC_METHOD_ID_RETVAL(createBuffer_ID, javaEPub3Class, javaEPub3ClassName,
             javaEPub3_createBufferMethodName, javaEPub3_createBufferSignature, ONLOAD_ERROR);
+
     INIT_STATIC_METHOD_ID_RETVAL(appendBytesToBuffer_ID, javaEPub3Class, javaEPub3ClassName,
             javaEPub3_appendBytesToBufferMethodName, javaEPub3_appendBytesToBufferSignature, ONLOAD_ERROR);
     INIT_STATIC_METHOD_ID_RETVAL(handleSdkError_ID, javaEPub3Class, javaEPub3ClassName,
@@ -391,7 +392,7 @@ Java_org_readium_sdk_android_EPub3_setContentFiltersRegistrationHandler(JNIEnv* 
         jobject hg = env->NewGlobalRef(handler);
         jclass rc = env->GetObjectClass(hg);
         jmethodID m = env->GetMethodID(rc, "run", "()V");
-        
+
         if (m == NULL) {
             LOGE("EPub3.setContentFiltersRegistrationHandler(): could not find 'run' method on handler class");
             env->DeleteGlobalRef (hg);
@@ -460,6 +461,8 @@ Java_org_readium_sdk_android_EPub3_setContentFiltersRegistrationHandler(JNIEnv* 
 //}
 
 
+
+
 /*
  * Class:     org_readium_sdk_android_EPub3
  * Method:    openBook
@@ -467,7 +470,6 @@ Java_org_readium_sdk_android_EPub3_setContentFiltersRegistrationHandler(JNIEnv* 
  */
 JNIEXPORT jobject JNICALL
 Java_org_readium_sdk_android_EPub3_openBook(JNIEnv* env, jobject thiz, jstring path) {
-
     // Initialize core ePub3 SDK
     initializeReadiumSDK(env);
 
@@ -476,10 +478,9 @@ Java_org_readium_sdk_android_EPub3_openBook(JNIEnv* env, jobject thiz, jstring p
     LOGD("EPub3.openBook(): path received is '%s'", nativePath);
 
     std::string spath = std::string(nativePath);
-    
     shared_ptr<ePub3::Container> _container = nullptr;
     try {
-        _container = ePub3::Container::OpenContainer(spath);
+        _container = ePub3::Container::OpenContainer1(spath, false);
     }
     catch (const ePub3::ContentModuleExceptionDecryptFlow& ex) {
         LOGD("OpenContainer() ContentModuleExceptionDecryptFlow: %s\n", ex.what());
@@ -513,7 +514,6 @@ Java_org_readium_sdk_android_EPub3_openBook(JNIEnv* env, jobject thiz, jstring p
 
         return nullptr;
     }
-
     if (_container == nullptr) {
         LOGD("OpenContainer() NULL\n");
 

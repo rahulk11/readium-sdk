@@ -17,7 +17,7 @@
 //  Affero General Public License as published by the Free Software Foundation, either version 3 of 
 //  the License, or (at your option) any later version. You should have received a copy of the GNU 
 //  Affero General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+#include <android/log.h>
 #include "zip_archive.h"
 #include <libzip/zipint.h>
 #include "byte_stream.h"
@@ -32,6 +32,14 @@
 #if EPUB_OS(WINDOWS)
 #include <windows.h>
 #endif
+#define ENABLE_ZIP_ARCHIVE_WRITER true
+
+#define  LOG_TAG    "ZipArchive"
+
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 
 #if ENABLE_ZIP_ARCHIVE_WRITER
 
@@ -240,6 +248,7 @@ bool ZipArchive::CreateFolder(const string & path)
 {
     return (zip_add_dir(_zip, Sanitized(path).c_str()) >= 0);
 }
+
 unique_ptr<ByteStream> ZipArchive::ByteStreamAtPath(const string &path) const
 {
     return make_unique<ZipFileByteStream>(_zip, path);
@@ -280,7 +289,7 @@ unique_ptr<ArchiveWriter> ZipArchive::WriterAtPath(const string & path, bool com
         delete writer;
         return nullptr;
     }
-    
+
     return unique_ptr<ZipWriter>(writer);
 }
 #endif //ENABLE_ZIP_ARCHIVE_WRITER
@@ -366,7 +375,7 @@ ssize_t ZipWriter::_source_callback(void *state, void *data, size_t len, enum zi
             delete writer;
             return 0;
         }
-            
+        
     }
     return r;
 }

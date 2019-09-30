@@ -42,6 +42,7 @@
 #include <ePub3/epub_collection.h>
 #include <ePub3/utilities/xml_identifiable.h>
 #include <ePub3/utilities/string_view.h>
+#include <sys/stat.h>
 //#include "media-overlays_smil_model.h"
 
 EPUB3_BEGIN_NAMESPACE
@@ -118,7 +119,13 @@ public:
      @result Returns `true` if the package was parsed successfully, `false` otherwise.
      */
     virtual bool            Open(const string& path, bool skipLoadingPotentiallyEncryptedContent = false);
-    
+    bool isDirectory = false;
+    virtual void setIsFolder(bool isFolder){
+        isDirectory = isFolder;
+    }
+    bool isFolder(){
+        return isDirectory;
+    }
     /**
      Returns the path used to construct this object minus the filename, e.g.
      
@@ -127,7 +134,14 @@ public:
      assert(pkg.BasePath() == "EPUB/");
      ~~~
      */
+    virtual const string&   DirPath()              const       { return _path; }
     virtual const string&   BasePath()              const       { return _pathBase; }
+    virtual int GetFileSize(std::string filename)
+    {
+        struct stat stat_buf;
+        int rc = stat(filename.c_str(), &stat_buf);
+        return rc == 0 ? stat_buf.st_size : -1;
+    }
     
     /// @{
     /// @name Raw Table Accessors
@@ -261,6 +275,7 @@ protected:
     shared_ptr<Archive>       _archive;                ///< The archive from which the package was loaded.
     shared_ptr<xml::Document> _opf;                    ///< The XML document representing the package.
     string                    _pathBase;               ///< The base path of the document within the archive.
+    string                    _path;                   ///< The base path of the folder of epub contents.
     string                    _type;                   ///< The MIME type of the package document.
     ManifestTable             _manifestByID;           ///< All manifest items, indexed by unique identifier.
     ManifestTable             _manifestByAbsolutePath; ///< All manifest items, indexed by absolute path.
@@ -381,6 +396,8 @@ public:
     
     virtual bool            Open(const string& path, bool skipLoadingPotentiallyEncryptedContent = false);
     bool                    _OpenForTest(shared_ptr<xml::Document> doc, const string& basePath);
+    
+    
     
     ///
     /// The full Unique Identifier, built from the package unique-id and the modification date.

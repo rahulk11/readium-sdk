@@ -27,7 +27,7 @@
 #ifndef _EPUB3_JNI_H_
 #define _EPUB3_JNI_H_
 
-
+#define ENABLE_ZIP_ARCHIVE_WRITER true
 
 
 #ifdef __cplusplus
@@ -158,7 +158,6 @@ JNIEXPORT void JNICALL Java_org_readium_sdk_android_EPub3_setContentFiltersRegis
  * Signature: (Ljava/lang/String;)Z
  */
 //JNIEXPORT jboolean JNICALL Java_org_readium_sdk_android_EPub3_isEpub3Book(JNIEnv* env, jobject thiz, jstring Path);
-
 /*
  * Class:     org_readium_sdk_android_EPub3
  * Method:    openBook
